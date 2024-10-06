@@ -1,0 +1,10 @@
+Flask
+Flask-CORS
+BeautifulSoup4
+Selenium
+pandas
+scikit-learn
+folium
+spacy
+waitress
+nltk

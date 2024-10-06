@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sri Lanka Event Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .map-container {
+            width: 90%;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .event-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            width: 90%;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .event-card {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-card p {
+            margin: 8px 0;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+
+<body>
+    <h1>Sri Lanka Event Dashboard</h1>
+    <div class="container">
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <h2>Predict Events</h2>
+        <form id="predict-form">
+            <input type="date" name="date" required>
+            <button type="submit">Predict</button>
+        </form>
+
+        <div class="event-list" id="event-list"></div>
+    </div>
+
+    <script>
+        // Initialize the map centered on Sri Lanka
+        var map = L.map('map').setView([6.9271, 79.8612], 8);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Function to render events on the map and in the event list
+        function renderEvents(events) {
+            // Clear the event list and the map
+            document.getElementById('event-list').innerHTML = '';
+            map.eachLayer(function (layer) {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            // Add each event to the map and event list
+            events.forEach(function (event) {
+                if (event.latitude !== 'Unknown' && event.longitude !== 'Unknown') {
+                    L.marker([event.latitude, event.longitude])
+                        .addTo(map)
+                        .bindPopup("<b>Type:</b> " + event.event_type + "<br><b>Date:</b> " + event.event_date +
+                            "<br><b>Sentiment:</b> " + event.sentiment_score + "<br><b>Engagement:</b> " + event.social_engagement);
+                }
+
+                // Add event to the event list as a card
+                var eventHtml = `
+                    <div class="event-card">
+                        <p><strong>Type:</strong> ${event.event_type}</p>
+                        <p><strong>Date:</strong> ${event.event_date}</p>
+                        <p><strong>Sentiment:</strong> ${event.sentiment_score}</p>
+                        <p><strong>Engagement:</strong> ${event.social_engagement}</p>
+                        <p><strong>Location:</strong> ${event.latitude}, ${event.longitude}</p>
+                    </div>
+                `;
+                document.getElementById('event-list').insertAdjacentHTML('beforeend', eventHtml);
+            });
+        }
+
+        // Fetch and render default predicted events for the next 30 days
+        window.onload = function () {
+            fetch('/')
+                .then(response => response.json())
+                .then(events => {
+                    renderEvents(events);
+                });
+        }
+
+        // Handle the form submission for custom event prediction
+        document.getElementById('predict-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            var formData = new FormData(event.target);
+            var date = formData.get('date');
+
+            // Send POST request to /predict to get future events
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(predictedEvents => {
+                    renderEvents(predictedEvents);
+                });
+        });
+    </script>
+</body>
+
+</html>
